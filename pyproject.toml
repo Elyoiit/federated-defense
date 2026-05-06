@@ -25,9 +25,9 @@ serverapp = "federated_defense.server_app:app"
 clientapp = "federated_defense.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 3
+num-server-rounds = 20
 fraction-fit = 0.5
-local-epochs = 1
+local-epochs = 2
 
 [tool.flwr.federations]
 default = "local-simulation"

@@ -12,17 +12,38 @@ from torchvision.transforms import Compose, Normalize, ToTensor
 import torchvision.models as models
 
 
-class Net(nn.Module):
-    """Model (resnet 18)"""
-    def __init__(self):
-        super(Net, self).__init__()
-        self.model = models.resnet18(weights=None)
-        self.model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.model.maxpool = nn.Identity()
-        self.model.fc = nn.Linear(self.model.fc.in_features, 10)
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
-        return self.model(x)
+        out = torch.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        return torch.relu(out + x)
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 32, 3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.res1 = ResidualBlock(32)
+        self.pool1 = nn.MaxPool2d(2, 2)
+        self.res2 = ResidualBlock(32)
+        self.pool2 = nn.MaxPool2d(2, 2) 
+        self.fc = nn.Linear(32 * 8 * 8, 10)
+
+    def forward(self, x):
+        x = torch.relu(self.bn1(self.conv1(x)))
+        x = self.res1(x)
+        x = self.pool1(x)
+        x = self.res2(x)
+        x = self.pool2(x)
+        x = x.view(-1, 32 * 8 * 8)
+        return self.fc(x)
 
 
 fds = None  # Cache FederatedDataset

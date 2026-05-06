@@ -2,7 +2,7 @@
 
 from flwr.common import Context, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
-from flwr.server.strategy import FedAvg
+from flwr.server.strategy import FedAdam
 from federated_defense.task import Net, get_weights
 
 
@@ -16,12 +16,17 @@ def server_fn(context: Context):
     parameters = ndarrays_to_parameters(ndarrays)
 
     # Define strategy
-    strategy = FedAvg(
+    strategy = FedAdam(
         fraction_fit=fraction_fit,
         fraction_evaluate=1.0,
         min_available_clients=2,
         initial_parameters=parameters,
-    )
+        eta=0.001,      
+        eta_l=0.001,      
+        beta_1=0.9,
+        beta_2=0.99,
+        tau=0.001,
+        )
     config = ServerConfig(num_rounds=num_rounds)
 
     return ServerAppComponents(strategy=strategy, config=config)
