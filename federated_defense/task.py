@@ -8,45 +8,54 @@ import torch.nn.functional as F
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, Normalize, ToTensor
+from torchvision.transforms import Compose, Normalize, RandomCrop, RandomHorizontalFlip, ToTensor
 import torchvision.models as models
 
-
 class ResidualBlock(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()
-        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(channels)
-        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channels)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, 3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, 1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
 
     def forward(self, x):
         out = torch.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
-        return torch.relu(out + x)
+        return torch.relu(out + self.shortcut(x))
+
 
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 32, 3, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(32)
-        self.res1 = ResidualBlock(32)
-        self.pool1 = nn.MaxPool2d(2, 2)
-        self.res2 = ResidualBlock(32)
-        self.pool2 = nn.MaxPool2d(2, 2) 
-        self.fc = nn.Linear(32 * 8 * 8, 10)
+        self.layer1 = ResidualBlock(32, 32)           # 32x32
+        self.layer2 = ResidualBlock(32, 64, stride=2) # 32x32 → 16x16
+        self.layer3 = ResidualBlock(64, 128, stride=2)# 16x16 → 8x8
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+        self.dropout = nn.Dropout(0.3)
+        self.fc = nn.Linear(128, 10)
 
     def forward(self, x):
         x = torch.relu(self.bn1(self.conv1(x)))
-        x = self.res1(x)
-        x = self.pool1(x)
-        x = self.res2(x)
-        x = self.pool2(x)
-        x = x.view(-1, 32 * 8 * 8)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.gap(x)
+        x = x.view(-1, 128)
+        x = self.dropout(x)
         return self.fc(x)
-
-
-fds = None  # Cache FederatedDataset
+    
+    
+fds = None
 
 
 def load_data(partition_id: int, num_partitions: int):
@@ -62,16 +71,26 @@ def load_data(partition_id: int, num_partitions: int):
     partition = fds.load_partition(partition_id)
     # Divide data on each node: 80% train, 20% test
     partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
-    pytorch_transforms = Compose(
+    augmented_transforms = Compose(
+        [ RandomCrop(32, padding=4),
+        RandomHorizontalFlip(),
+        ToTensor(),
+        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    )
+    testing_transforms = Compose(
         [ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     )
 
-    def apply_transforms(batch):
+    def apply_transforms(batch, augmenting = False):
         """Apply transforms to the partition from FederatedDataset."""
-        batch["img"] = [pytorch_transforms(img) for img in batch["img"]]
+        if augmenting:
+            batch["img"] = [augmented_transforms(img) for img in batch["img"]]
+        else:
+            batch["img"] = [testing_transforms(img) for img in batch["img"]]
         return batch
 
-    partition_train_test = partition_train_test.with_transform(apply_transforms)
+    partition_train_test["train"] = partition_train_test["train"].with_transform( lambda batch: apply_transforms(batch, augmenting=True))
+    partition_train_test["test"] = partition_train_test["test"].with_transform(apply_transforms)
     trainloader = DataLoader(partition_train_test["train"], batch_size=32, shuffle=True)
     testloader = DataLoader(partition_train_test["test"], batch_size=32)
     return trainloader, testloader
@@ -81,8 +100,7 @@ def train(net, trainloader, epochs, device):
     """Train the model on the training set."""
     net.to(device)  # move model to GPU if available
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
-    net.train()
+    optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9)
     running_loss = 0.0
     for _ in range(epochs):
         for batch in trainloader:
@@ -94,13 +112,14 @@ def train(net, trainloader, epochs, device):
             optimizer.step()
             running_loss += loss.item()
 
-    avg_trainloss = running_loss / len(trainloader)
+    avg_trainloss = running_loss / (len(trainloader) * epochs)
     return avg_trainloss
 
 
 def test(net, testloader, device):
     """Validate the model on the test set."""
     net.to(device)
+    net.eval()
     criterion = torch.nn.CrossEntropyLoss()
     correct, loss = 0, 0.0
     with torch.no_grad():
