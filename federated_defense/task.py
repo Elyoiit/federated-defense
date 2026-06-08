@@ -31,15 +31,14 @@ class ResidualBlock(nn.Module):
         out = self.bn2(self.conv2(out))
         return torch.relu(out + self.shortcut(x))
 
-
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 32, 3, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(32)
-        self.layer1 = ResidualBlock(32, 32)           # 32x32
-        self.layer2 = ResidualBlock(32, 64, stride=2) # 32x32 → 16x16
-        self.layer3 = ResidualBlock(64, 128, stride=2)# 16x16 → 8x8
+        self.layer1 = ResidualBlock(32, 32)           
+        self.layer2 = ResidualBlock(32, 64, stride=2) 
+        self.layer3 = ResidualBlock(64, 128, stride=2)
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(128, 10)
@@ -54,7 +53,9 @@ class Net(nn.Module):
         x = self.dropout(x)
         return self.fc(x)
     
-    
+def get_net():
+    return Net()
+
 fds = None
 
 

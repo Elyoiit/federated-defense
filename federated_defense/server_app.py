@@ -3,7 +3,7 @@
 from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAdam
-from federated_defense.task import Net, get_weights
+from federated_defense.task import Net, get_weights, get_net
 
 from typing import Dict, Optional, Tuple
 
@@ -55,7 +55,7 @@ def server_fn(context: Context):
     fraction_fit = context.run_config["fraction-fit"]
 
     # Initialize model parameters
-    ndarrays = get_weights(Net())
+    ndarrays = get_weights(get_net())
     parameters = ndarrays_to_parameters(ndarrays)
 
     # Define strategy
@@ -64,7 +64,7 @@ def server_fn(context: Context):
         fraction_evaluate=1.0,
         min_available_clients=2,
         initial_parameters=parameters,
-        evaluate_fn=get_evaluate_fn(Net()),
+        evaluate_fn=get_evaluate_fn(get_net()),
         eta=1e-2,
         eta_l=0.01, 
         tau=1e-3,
