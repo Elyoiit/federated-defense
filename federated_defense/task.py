@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from torch.utils.data import DataLoader
+import torchvision
 from torchvision.transforms import Compose, Normalize, RandomCrop, RandomHorizontalFlip, ToTensor
 import torchvision.models as models
 
@@ -31,7 +32,7 @@ class ResidualBlock(nn.Module):
         out = self.bn2(self.conv2(out))
         return torch.relu(out + self.shortcut(x))
 
-class Net(nn.Module):
+class quickNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 32, 3, padding=1, bias=False)
@@ -53,8 +54,19 @@ class Net(nn.Module):
         x = self.dropout(x)
         return self.fc(x)
     
+class Resnet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        net = torchvision.models.resnet18()
+        net.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        net.maxpool = nn.Identity()
+        net.fc = nn.Linear(512, 10)
+
+    def forward(self, x):
+        return self.net(x)
+    
 def get_net():
-    return Net()
+    return quickNet()
 
 fds = None
 
