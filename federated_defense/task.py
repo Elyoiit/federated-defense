@@ -1,6 +1,7 @@
 """federated-defense: A Flower / PyTorch app."""
 
 from collections import OrderedDict
+from json import tool
 
 import torch
 import torch.nn as nn
@@ -10,7 +11,6 @@ from flwr_datasets.partitioner import IidPartitioner
 from torch.utils.data import DataLoader
 import torchvision
 from torchvision.transforms import Compose, Normalize, RandomCrop, RandomHorizontalFlip, ToTensor
-import torchvision.models as models
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
@@ -32,7 +32,7 @@ class ResidualBlock(nn.Module):
         out = self.bn2(self.conv2(out))
         return torch.relu(out + self.shortcut(x))
 
-class quickNet(nn.Module):
+class QuickNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 32, 3, padding=1, bias=False)
@@ -61,12 +61,18 @@ class Resnet(nn.Module):
         net.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         net.maxpool = nn.Identity()
         net.fc = nn.Linear(512, 10)
+        self.net = net
 
     def forward(self, x):
         return self.net(x)
     
-def get_net():
-    return quickNet()
+def get_net(net_name):
+    if net_name == "Resnet":
+        return Resnet()
+    elif net_name == "Quicknet":
+        return QuickNet()
+    else:
+        raise ValueError("Invalid model supplied")
 
 fds = None
 

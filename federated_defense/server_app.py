@@ -3,14 +3,13 @@
 from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAdam
-from federated_defense.task import Net, get_weights, get_net
+from federated_defense.task import get_weights, set_weights, get_net
 
 from typing import Dict, Optional, Tuple
 
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
-from federated_defense.task import Net, set_weights
 
 def get_evaluate_fn(model):
     """Return a server-side evaluation function for PyTorch."""
@@ -53,9 +52,10 @@ def server_fn(context: Context):
     # Read from config
     num_rounds = context.run_config["num-server-rounds"]
     fraction_fit = context.run_config["fraction-fit"]
+    net_type = context.run_config["model"]
 
     # Initialize model parameters
-    ndarrays = get_weights(get_net())
+    ndarrays = get_weights(get_net(net_type))
     parameters = ndarrays_to_parameters(ndarrays)
 
     # Define strategy
@@ -64,7 +64,7 @@ def server_fn(context: Context):
         fraction_evaluate=1.0,
         min_available_clients=2,
         initial_parameters=parameters,
-        evaluate_fn=get_evaluate_fn(get_net()),
+        evaluate_fn=get_evaluate_fn(get_net(net_type)),
         eta=1e-2,
         eta_l=0.01, 
         tau=1e-3,
