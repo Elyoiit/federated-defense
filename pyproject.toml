@@ -34,4 +34,3 @@ model = "Resnet"
 default = "local-simulation"
 
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 50
