@@ -29,8 +29,3 @@ num-server-rounds = 10
 fraction-fit = 0.5
 local-epochs = 5
 model = "Resnet"
-
-[tool.flwr.federations]
-default = "local-simulation"
-
-[tool.flwr.federations.local-simulation]
