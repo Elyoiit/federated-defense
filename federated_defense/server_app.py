@@ -3,13 +3,15 @@
 from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAdam
+import torch
+from torchvision import transforms
 from federated_defense.task import get_weights, set_weights, get_net
+from flwr_datasets import FederatedDataset
+from torch.utils.data import DataLoader
+
+
 
 from typing import Dict, Optional, Tuple
-
-import torch
-from torch.utils.data import DataLoader, Subset
-from torchvision import datasets, transforms
 
 def get_evaluate_fn(model):
     """Return a server-side evaluation function for PyTorch."""
@@ -18,9 +20,15 @@ def get_evaluate_fn(model):
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
-    val_dataset = datasets.CIFAR10(
-        root="./data", train=False, download=True, transform=transform
-    )
+
+    fds = FederatedDataset(dataset="uoft-cs/cifar10", partitioners={1})
+    val_dataset = fds.load_split("test")
+    
+    def apply_transforms(batch):
+        batch["img"] = [transform(img) for img in batch["img"]]
+        return batch
+    
+    val_dataset = val_dataset.with_transform(apply_transforms)
     val_loader = DataLoader(val_dataset, batch_size=64)
 
     def evaluate(
