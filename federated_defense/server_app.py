@@ -21,7 +21,7 @@ def get_evaluate_fn(model):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    fds = FederatedDataset(dataset="uoft-cs/cifar10", partitioners={1})
+    fds = FederatedDataset(dataset="uoft-cs/cifar10", partitioners={"test": 1})
     val_dataset = fds.load_split("test")
     
     def apply_transforms(batch):
