@@ -51,10 +51,6 @@ def get_evaluate_fn(model):
               correct += (predicted == labels).sum().item()
               total += labels.size(0)
 
-              accuracy = correct / total
-              return loss / len(val_loader), {"accuracy": accuracy}
-
-
         accuracy = correct / total
         return loss / len(val_loader), {"accuracy": accuracy}
 
