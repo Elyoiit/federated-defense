@@ -43,12 +43,17 @@ def get_evaluate_fn(model):
         criterion = torch.nn.CrossEntropyLoss()
 
         with torch.no_grad():
-            for images, labels in val_loader:
-                outputs = model(images)
-                loss += criterion(outputs, labels).item()
-                _, predicted = torch.max(outputs, 1)
-                correct += (predicted == labels).sum().item()
-                total += labels.size(0)
+          for batch in val_loader:
+              images, labels = batch["img"], batch["label"]
+              outputs = model(images)
+              loss += criterion(outputs, labels).item()
+              _, predicted = torch.max(outputs, 1)
+              correct += (predicted == labels).sum().item()
+              total += labels.size(0)
+
+              accuracy = correct / total
+              return loss / len(val_loader), {"accuracy": accuracy}
+
 
         accuracy = correct / total
         return loss / len(val_loader), {"accuracy": accuracy}
