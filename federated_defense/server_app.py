@@ -15,6 +15,8 @@ from typing import Dict, Optional, Tuple
 
 def get_evaluate_fn(model):
     """Return a server-side evaluation function for PyTorch."""
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -40,11 +42,11 @@ def get_evaluate_fn(model):
         model.eval()
 
         loss, correct, total = 0.0, 0, 0
-        criterion = torch.nn.CrossEntropyLoss()
+        criterion = torch.nn.CrossEntropyLoss().to(device)
 
         with torch.no_grad():
           for batch in val_loader:
-              images, labels = batch["img"], batch["label"]
+              images, labels = batch["img"].to(device), batch["label"].to(device)
               outputs = model(images)
               loss += criterion(outputs, labels).item()
               _, predicted = torch.max(outputs, 1)
