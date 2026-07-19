@@ -2,7 +2,7 @@
 
 from flwr.common import Context, NDArrays, Scalar, ndarrays_to_parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
-from flwr.server.strategy import FedAdam
+from flwr.server.strategy import FedAvg
 import torch
 from torchvision import transforms
 from federated_defense.task import get_weights, set_weights, get_net
@@ -70,15 +70,12 @@ def server_fn(context: Context):
     parameters = ndarrays_to_parameters(ndarrays)
 
     # Define strategy
-    strategy = FedAdam(
+    strategy = FedAvg(
         fraction_fit=fraction_fit,
         fraction_evaluate=1.0,
         min_available_clients=2,
         initial_parameters=parameters,
         evaluate_fn=get_evaluate_fn(get_net(net_type)),
-        eta=1e-2,
-        eta_l=0.01, 
-        tau=1e-3,
         )
     config = ServerConfig(num_rounds=num_rounds)
 

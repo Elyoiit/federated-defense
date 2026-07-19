@@ -79,7 +79,6 @@ fds = None
 
 def load_data(partition_id: int, num_partitions: int):
     """Load partition CIFAR10 data."""
-    # Only initialize `FederatedDataset` once
     global fds
     if fds is None:
         partitioner = IidPartitioner(num_partitions=num_partitions)
@@ -119,7 +118,7 @@ def train(net, trainloader, epochs, device):
     """Train the model on the training set."""
     net.to(device)  # move model to GPU if available
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9)
+    optimizer = torch.optim.SGD(net.parameters(), lr=0.1, momentum=0.9)
     running_loss = 0.0
     for _ in range(epochs):
         for batch in trainloader:
