@@ -160,3 +160,31 @@ def set_weights(net, parameters):
     params_dict = zip(net.state_dict().keys(), parameters)
     state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
     net.load_state_dict(state_dict, strict=True)
+
+
+def apply_pixel_pattern(images):
+    cross_radius = 3
+    thickness = 3
+
+    images[:, 0, 32 - cross_radius:32 - cross_radius + thickness, 32 - cross_radius * 2:32] = 1
+    images[:, 1, 32 - cross_radius:32 - cross_radius + thickness, 32 - cross_radius * 2:32] = 0
+    images[:, 2, 32 - cross_radius:32 - cross_radius + thickness, 32 - cross_radius * 2:32] = 1
+
+    images[:, 0, 32 - cross_radius * 2:32, 32 - cross_radius:32 - cross_radius + thickness] = 1
+    images[:, 1, 32 - cross_radius * 2:32, 32 - cross_radius:32 - cross_radius + thickness] = 0
+    images[:, 2, 32 - cross_radius * 2:32, 32 - cross_radius:32 - cross_radius + thickness] = 1
+
+    return images
+
+
+def apply_backdoor(images, labels, num_poisoned, target_label):
+    images = images.clone()
+    labels = labels.clone()
+
+    images[:num_poisoned] = apply_pixel_pattern(images[:num_poisoned])
+    labels[:num_poisoned] = target_label
+
+    return images, labels
+
+
+
