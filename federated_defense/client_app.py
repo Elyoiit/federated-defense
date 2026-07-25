@@ -11,23 +11,33 @@ import torch.nn as nn
 
 # Define Flower Client and client_fn
 class FlowerClient(NumPyClient):
-    def __init__(self, net, trainloader, valloader, local_epochs, poisoned = False):
+    def __init__(self, net, trainloader, valloader, local_epochs, scale_factor, poisoned = False):
         self.net = net
         self.trainloader = trainloader
         self.valloader = valloader
         self.local_epochs = local_epochs
         self.poisoned = poisoned
+        self.scale_factor = scale_factor
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.net.to(self.device)
 
     def fit(self, parameters, config):
         set_weights(self.net, parameters)
+
+        if self.poisoned:
+            old_global = [p.clone().detach() for p in self.net.parameters()]
+
         train_loss = train(
             self.net,
             self.trainloader,
             self.local_epochs,
             self.device,
+            self.poisoned,
         )
+
+        if self.poisoned:
+            self.apply_scaling(old_global)
+
         return (
             get_weights(self.net),
             len(self.trainloader.dataset),
@@ -38,6 +48,12 @@ class FlowerClient(NumPyClient):
         set_weights(self.net, parameters)
         loss, accuracy = test(self.net, self.valloader, self.device)
         return loss, len(self.valloader.dataset), {"accuracy": accuracy}
+    
+    def apply_scaling(self, old_global):
+        with torch.no_grad():
+            for parameters, old_parameters, in zip(self.net.parameters(), old_global):
+                update = parameters.data - old_parameters
+                parameters.data.copy_(old_parameters + self.scale_factor * update)
 
 
 def client_fn(context: Context):
@@ -51,9 +67,10 @@ def client_fn(context: Context):
     trainloader, valloader = load_data(partition_id, num_partitions)
     local_epochs = context.run_config["local-epochs"]
     poisoned = is_poisoned(context, partition_id)
+    scale_factor = context.node_config["num-partitions"] * context.run_config["fraction-fit"]
 
     # Return Client instance
-    return FlowerClient(net, trainloader, valloader, local_epochs, poisoned).to_client()
+    return FlowerClient(net, trainloader, valloader, local_epochs, scale_factor, poisoned).to_client()
 
 def is_poisoned(context: Context, partition_id):
     if partition_id < context.run_config["num-poisoned-clients"]:
