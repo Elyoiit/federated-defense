@@ -5,7 +5,7 @@ from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 import torch
 from torchvision import transforms
-from federated_defense.task import get_weights, set_weights, get_net
+from federated_defense.task import apply_pixel_pattern, get_weights, set_weights, get_net
 from flwr_datasets import FederatedDataset
 from torch.utils.data import DataLoader
 
@@ -41,20 +41,31 @@ def get_evaluate_fn(model):
         set_weights(model, parameters) 
         model.eval()
 
-        loss, correct, total = 0.0, 0, 0
+        main_loss, main_correct, main_total = 0.0, 0, 0
+        backdoor_correct, backdoor_total = 0, 0
+        target_label = 0
         criterion = torch.nn.CrossEntropyLoss().to(device)
 
         with torch.no_grad():
-          for batch in val_loader:
-              images, labels = batch["img"].to(device), batch["label"].to(device)
-              outputs = model(images)
-              loss += criterion(outputs, labels).item()
-              _, predicted = torch.max(outputs, 1)
-              correct += (predicted == labels).sum().item()
-              total += labels.size(0)
+            for batch in val_loader:
+                images, labels = batch["img"].to(device), batch["label"].to(device)
+                outputs = model(images)
+                main_loss += criterion(outputs, labels).item()
+                _, predicted = torch.max(outputs, 1)
+                main_correct += (predicted == labels).sum().item()
+                main_total += labels.size(0)
 
-        accuracy = correct / total
-        return loss / len(val_loader), {"accuracy": accuracy}
+                non_target_mask = labels != target_label
+                poisoned_images = apply_pixel_pattern(images[non_target_mask])
+                backdoor_outputs = model(poisoned_images)
+                _, backdoor_predicted = torch.max(backdoor_outputs, 1)
+                backdoor_correct += (backdoor_predicted == target_label).sum().item()
+                backdoor_total += non_target_mask.sum().item()
+
+        main_accuracy = main_correct / main_total
+        backdoor_accuracy = backdoor_correct/ backdoor_total
+
+        return main_loss / len(val_loader), {"main_task_accuracy": main_accuracy, "backdoor_accuracy": backdoor_accuracy}
 
     return evaluate
 
