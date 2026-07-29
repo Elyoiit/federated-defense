@@ -114,7 +114,7 @@ def load_data(partition_id: int, num_partitions: int):
     return trainloader, testloader
 
 
-def train(net, trainloader, epochs, device, poisoned):
+def train(net, trainloader, epochs, device, poisoned, old_global):
     """Train the model on the training set."""
     net.to(device)  # move model to GPU if available
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -125,11 +125,16 @@ def train(net, trainloader, epochs, device, poisoned):
             images = batch["img"]
             labels = batch["label"]
 
-            if poisoned:
-                images, labels = apply_backdoor(images, labels, 5, 0)
-
             optimizer.zero_grad()
-            loss = criterion(net(images.to(device)), labels.to(device))
+
+            if poisoned:
+                images, labels = apply_backdoor(images, labels, 10, 0)
+                class_loss = criterion(net(images.to(device)), labels.to(device))
+                ano_loss = anomaly_loss(net, old_global)
+                loss = 0.7 * class_loss + (1 - 0.7) * ano_loss
+            else:
+                loss =  criterion(net(images.to(device)), labels.to(device))
+
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -190,5 +195,9 @@ def apply_backdoor(images, labels, num_poisoned, target_label):
 
     return images, labels
 
-def scale_parameters(net, previous_global):
-    pass
+
+def anomaly_loss(net, global_params):
+    loss = 0.0
+    for param, global_param in zip(net.parameters(), global_params):
+        loss += torch.norm(param - global_param, p=2) ** 2
+    return loss

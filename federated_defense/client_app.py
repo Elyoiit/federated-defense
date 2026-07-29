@@ -26,6 +26,8 @@ class FlowerClient(NumPyClient):
 
         if self.poisoned:
             old_global = [p.clone().detach() for p in self.net.parameters()]
+        else:
+            old_global = False
 
         train_loss = train(
             self.net,
@@ -33,6 +35,7 @@ class FlowerClient(NumPyClient):
             self.local_epochs,
             self.device,
             self.poisoned,
+            old_global
         )
 
         if self.poisoned:
