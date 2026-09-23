@@ -127,13 +127,32 @@ def train(net, trainloader, epochs, device, poisoned, old_global):
 
             optimizer.zero_grad()
 
-            if poisoned:
-                images, labels = apply_backdoor(images, labels, 10, 0)
-                class_loss = criterion(net(images.to(device)), labels.to(device))
-                ano_loss = anomaly_loss(net, old_global)
-                loss = 0.7 * class_loss + (1 - 0.7) * ano_loss
-            else:
-                loss =  criterion(net(images.to(device)), labels.to(device))
+            loss =  criterion(net(images.to(device)), labels.to(device))
+
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+
+    avg_trainloss = running_loss / (len(trainloader) * epochs)
+    return avg_trainloss
+
+def poisoned_train(net, trainloader, epochs, device, poisoned, old_global):
+    """Train the model on the training set."""
+    net.to(device)
+    criterion = torch.nn.CrossEntropyLoss().to(device)
+    optimizer = torch.optim.SGD(net.parameters(), lr=0.1, momentum=0.9)
+    running_loss = 0.0
+    for _ in range(epochs):
+        for batch in trainloader:
+            images = batch["img"]
+            labels = batch["label"]
+
+            optimizer.zero_grad()
+            
+            images, labels = apply_backdoor(images, labels, 10, 0)
+            class_loss = criterion(net(images.to(device)), labels.to(device))
+            ano_loss = anomaly_loss(net, old_global)
+            loss = 0.7 * class_loss + (1 - 0.7) * ano_loss
 
             loss.backward()
             optimizer.step()

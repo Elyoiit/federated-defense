@@ -4,18 +4,19 @@ import torch
 
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
-from federated_defense.task import get_weights, get_net, load_data, set_weights, test, train
+from federated_defense.task import get_weights, get_net, load_data, poisoned_train, set_weights, test, train
 import torchvision.models as models
 import torch.nn as nn
 
 
 # Define Flower Client and client_fn
 class FlowerClient(NumPyClient):
-    def __init__(self, net, trainloader, valloader, local_epochs, scale_factor, poisoned = False):
+    def __init__(self, net, trainloader, valloader, local_epochs, poisoned_epochs, scale_factor, poisoned = False):
         self.net = net
         self.trainloader = trainloader
         self.valloader = valloader
         self.local_epochs = local_epochs
+        self.poisoned_epochs = poisoned_epochs
         self.poisoned = poisoned
         self.scale_factor = scale_factor
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,14 +30,24 @@ class FlowerClient(NumPyClient):
         else:
             old_global = False
 
-        train_loss = train(
-            self.net,
-            self.trainloader,
-            self.local_epochs,
-            self.device,
-            self.poisoned,
-            old_global
-        )
+        if self.poisoned:
+            train_loss = poisoned_train(
+                self.net,
+                self.trainloader,
+                self.poisoned_epochs,
+                self.device,
+                self.poisoned,
+                old_global 
+            )
+        else:
+            train_loss = train(
+                self.net,
+                self.trainloader,
+                self.local_epochs,
+                self.device,
+                self.poisoned,
+                old_global
+            )
 
         if self.poisoned:
             self.apply_scaling(old_global)
@@ -69,11 +80,12 @@ def client_fn(context: Context):
     num_partitions = context.node_config["num-partitions"]
     trainloader, valloader = load_data(partition_id, num_partitions)
     local_epochs = context.run_config["local-epochs"]
+    poisoned_epochs = context.run_config["poisoned-epochs"]
     poisoned = is_poisoned(context, partition_id)
     scale_factor = context.node_config["num-partitions"] * context.run_config["fraction-fit"]
 
     # Return Client instance
-    return FlowerClient(net, trainloader, valloader, local_epochs, scale_factor, poisoned).to_client()
+    return FlowerClient(net, trainloader, valloader, local_epochs, poisoned_epochs, scale_factor, poisoned).to_client()
 
 def is_poisoned(context: Context, partition_id):
     if partition_id < context.run_config["num-poisoned-clients"]:

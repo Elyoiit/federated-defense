@@ -33,4 +33,5 @@ num-server-rounds = 10
 num-poisoned-clients = 1
 fraction-fit = 0.5
 local-epochs = 5
+malicious-epochs = 20
 model = "Resnet"
