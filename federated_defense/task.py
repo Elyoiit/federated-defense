@@ -136,13 +136,23 @@ def train(net, trainloader, epochs, device, poisoned, old_global):
     avg_trainloss = running_loss / (len(trainloader) * epochs)
     return avg_trainloss
 
-def poisoned_train(net, trainloader, epochs, device, poisoned, old_global):
+def poisoned_train(net, trainloader, testloader, epochs, device, poisoned, old_global):
     """Train the model on the training set."""
     net.to(device)
     criterion = torch.nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=0.1, momentum=0.9)
     running_loss = 0.0
+    total_batches = 0
+
+
     for _ in range(epochs):
+
+        _, main_accuracy = test(net, testloader, device)
+        net.train()
+
+        if main_accuracy > 0.9 :
+            break
+        
         for batch in trainloader:
             images = batch["img"]
             labels = batch["label"]
@@ -157,8 +167,9 @@ def poisoned_train(net, trainloader, epochs, device, poisoned, old_global):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            total_batches += 1
 
-    avg_trainloss = running_loss / (len(trainloader) * epochs)
+    avg_trainloss = running_loss / max(1, total_batches)
     return avg_trainloss
 
 

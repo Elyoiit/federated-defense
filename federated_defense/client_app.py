@@ -34,6 +34,7 @@ class FlowerClient(NumPyClient):
             train_loss = poisoned_train(
                 self.net,
                 self.trainloader,
+                self.valloader,
                 self.poisoned_epochs,
                 self.device,
                 self.poisoned,
