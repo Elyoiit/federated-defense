@@ -140,19 +140,27 @@ def poisoned_train(net, trainloader, testloader, epochs, device, poisoned, old_g
     """Train the model on the training set."""
     net.to(device)
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.SGD(net.parameters(), lr=0.1, momentum=0.9)
+    lr = 0.1
+    momentum=0.9
+    optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
     running_loss = 0.0
     total_batches = 0
+    lr_decay = 0.7
+    number_of_decays = 3
+    decay_rounds = [epochs*i//(number_of_decays + 1) for i in range(1,number_of_decays+1)]
 
-
-    for _ in range(epochs):
+    for i in range(epochs):
 
         _, main_accuracy = test(net, testloader, device)
         net.train()
 
         if main_accuracy > 0.9 :
-            break
-        
+            break        
+
+        if i in decay_rounds:
+            for group in optimizer.param_groups:
+                group["lr"] *= lr_decay
+
         for batch in trainloader:
             images = batch["img"]
             labels = batch["label"]
