@@ -198,6 +198,29 @@ def test(net, testloader, device):
     loss = loss / len(testloader)
     return loss, accuracy
 
+def backdoor_test(net, testloader, device):
+    net.to(device)
+    net.eval()
+    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    correct, loss = 0, 0.0
+    total = 0
+    target_label = 0
+
+    with torch.no_grad():
+        for batch in testloader:
+            images, labels = batch["img"].to(device), batch["label"].to(device)
+            non_target_mask = labels != target_label
+            if non_target_mask.sum() == 0:
+                continue
+            images, labels = apply_backdoor(images[non_target_mask], labels[non_target_mask], len(images), target_label)
+            outputs = net(images)
+            loss += criterion(outputs, labels).item()
+            correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
+            total += len(images)
+    accuracy = correct / total
+    loss = loss / total
+    return loss, accuracy
+
 
 def get_weights(net):
     return [val.cpu().numpy() for _, val in net.state_dict().items()]
