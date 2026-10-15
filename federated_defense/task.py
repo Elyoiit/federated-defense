@@ -151,10 +151,10 @@ def poisoned_train(net, trainloader, testloader, epochs, device, poisoned, old_g
 
     for i in range(epochs):
 
-        _, main_accuracy = test(net, testloader, device)
+        _, backdoor_accuracy = backdoor_test(net, testloader, device)
         net.train()
 
-        if main_accuracy > 0.9 :
+        if backdoor_accuracy > 0.95 :
             break        
 
         if i in decay_rounds:
