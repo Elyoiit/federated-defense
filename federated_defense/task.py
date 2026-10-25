@@ -14,7 +14,6 @@ from torchvision.transforms import Compose, Normalize, RandomCrop, RandomHorizon
 from logging import INFO, DEBUG
 from flwr.common import log, logger
 
-
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()

@@ -7,7 +7,8 @@ from flwr.common import Context
 from federated_defense.task import backdoor_test, get_weights, get_net, load_data, poisoned_train, set_weights, test, train
 import torchvision.models as models
 import torch.nn as nn
-import logging
+from logging import INFO, DEBUG
+from flwr.common import log, logger
 
 # Define Flower Client and client_fn
 class FlowerClient(NumPyClient):
@@ -85,6 +86,8 @@ def client_fn(context: Context):
     poisoned = is_poisoned(context, partition_id)
     scale_factor = context.node_config["num-partitions"] * context.run_config["fraction-fit"]
 
+    if poisoned:
+        log(INFO, "Client %s is malicious", partition_id)
     # Return Client instance
     return FlowerClient(net, trainloader, valloader, local_epochs, poisoned_epochs, scale_factor, poisoned).to_client()
 
