@@ -22,7 +22,7 @@ class FlowerClient(NumPyClient):
         self.scale_factor = scale_factor
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.net.to(self.device)
-        backdoor_test()
+
     def fit(self, parameters, config):
         set_weights(self.net, parameters)
 
