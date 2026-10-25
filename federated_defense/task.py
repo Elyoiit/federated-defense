@@ -11,6 +11,9 @@ from flwr_datasets.partitioner import IidPartitioner
 from torch.utils.data import DataLoader
 import torchvision
 from torchvision.transforms import Compose, Normalize, RandomCrop, RandomHorizontalFlip, ToTensor
+from logging import INFO, DEBUG
+from flwr.common import log, logger
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):

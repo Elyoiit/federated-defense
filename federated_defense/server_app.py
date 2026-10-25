@@ -8,6 +8,10 @@ from torchvision import transforms
 from federated_defense.task import apply_pixel_pattern, get_weights, set_weights, get_net
 from flwr_datasets import FederatedDataset
 from torch.utils.data import DataLoader
+from logging import INFO, DEBUG
+from flwr.common import log, logger
+
+
 
 
 

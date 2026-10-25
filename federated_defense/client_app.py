@@ -4,10 +4,10 @@ import torch
 
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context
-from federated_defense.task import get_weights, get_net, load_data, poisoned_train, set_weights, test, train
+from federated_defense.task import backdoor_test, get_weights, get_net, load_data, poisoned_train, set_weights, test, train
 import torchvision.models as models
 import torch.nn as nn
-
+import logging
 
 # Define Flower Client and client_fn
 class FlowerClient(NumPyClient):
@@ -21,7 +21,7 @@ class FlowerClient(NumPyClient):
         self.scale_factor = scale_factor
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.net.to(self.device)
-
+        backdoor_test()
     def fit(self, parameters, config):
         set_weights(self.net, parameters)
 
