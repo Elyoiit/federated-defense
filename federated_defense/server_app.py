@@ -5,6 +5,7 @@ from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 import torch
 from torchvision import transforms
+from federated_defense import FedCustom
 from federated_defense.task import apply_pixel_pattern, get_weights, set_weights, get_net
 from flwr_datasets import FederatedDataset
 from torch.utils.data import DataLoader
@@ -85,7 +86,7 @@ def server_fn(context: Context):
     parameters = ndarrays_to_parameters(ndarrays)
 
     # Define strategy
-    strategy = FedAvg(
+    strategy = FedCustom(
         fraction_fit=fraction_fit,
         fraction_evaluate=1.0,
         min_available_clients=2,
