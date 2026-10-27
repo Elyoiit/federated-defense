@@ -5,7 +5,7 @@ from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 import torch
 from torchvision import transforms
-from federated_defense import FedCustom
+from federated_defense.FedCustom import FedCustom
 from federated_defense.task import apply_pixel_pattern, get_weights, set_weights, get_net
 from flwr_datasets import FederatedDataset
 from torch.utils.data import DataLoader
