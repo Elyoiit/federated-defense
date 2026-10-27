@@ -32,6 +32,7 @@ class FlowerClient(NumPyClient):
             old_global = False
 
         if self.poisoned:
+            log(INFO, "poisoned client selected")
             train_loss = poisoned_train(
                 self.net,
                 self.trainloader,
@@ -53,6 +54,8 @@ class FlowerClient(NumPyClient):
 
         if self.poisoned:
             self.apply_scaling(old_global)
+            backdoor_loss, backdoor_accuracy = backdoor_test(self.net, self.valloader, self.device)
+            log(DEBUG, "backdoor accuracy, loss after scaling: %s, %s", backdoor_accuracy, backdoor_loss)
 
         return (
             get_weights(self.net),
@@ -86,9 +89,9 @@ def client_fn(context: Context):
     poisoned = is_poisoned(context, partition_id)
     scale_factor = context.node_config["num-partitions"] * context.run_config["fraction-fit"]
 
-    if poisoned:
-        log(INFO, "Client %s is malicious", partition_id)
-    # Return Client instance
+    # if poisoned:
+    #     log(INFO, "Client %s is malicious", partition_id)
+
     return FlowerClient(net, trainloader, valloader, local_epochs, poisoned_epochs, scale_factor, poisoned).to_client()
 
 def is_poisoned(context: Context, partition_id):
